@@ -1,7 +1,6 @@
 import Fastify from 'fastify';
 import { allRoutes } from './routes';
-//
-// import fp from 'fastify-plugin';
+import { join } from 'path';
 //
 
 const fastify = Fastify({
@@ -11,27 +10,12 @@ const fastify = Fastify({
 fastify.register(import('@fastify/cors'));
 fastify.register(import('@fastify/multipart'), {
   addToBody: true,
+  preservePath: true,
 });
 fastify.register(import('@fastify/cookie'));
-
-// fastify.register(import('@fastify/autoload'), {
-//   dir: join(__dirname, 'routes'),
-//   options: Object.assign({}),
-// });
-// fastify.register(import('@fastify/autoload'), {
-//   dir: join(__dirname, 'src'),
-//   options: Object.assign({}),
-// });
-
-// fp(async(fastify, opts) => {
-//   fastify.register(import('@fastify/multipart'), {
-//     limits: {
-//       fieldNameSize: 100,
-//       fields: 20,
-//       files: 1,
-//     },
-//   })
-// })
+fastify.register(import('@fastify/static'), {
+  root: join(__dirname, 'picture'),
+});
 
 fastify.register(allRoutes, { prefix: '/api' });
 
