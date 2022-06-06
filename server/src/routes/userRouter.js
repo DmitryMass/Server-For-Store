@@ -1,13 +1,25 @@
 import { hash, compare } from 'bcrypt';
 import { sign } from 'jsonwebtoken';
 import { Cart, User } from '../models/models';
+import authMiddleWare from './authCheck';
 
-const SECRET_KEY = 'this is secret key';
+export const SECRET_KEY = 'this is secret key';
+const jwtToken = (id, email, role) => {
+  return sign(
+    {
+      id,
+      email,
+      role,
+    },
+    SECRET_KEY,
+    { expiresIn: '24h' }
+  );
+};
 
 const userLoginAndRegister = async (fastify, opts) => {
   fastify.post('/registration', async (request, reply) => {
-    const { username, email, password, role } = request.body;
-    // console.log(await User.findOne({ where: { email } })); need Null
+    const { email, password, role } = request.body;
+    console.log(await User.findOne({ where: { email } }));
 
     if (await User.findOne({ where: { email } })) {
       return reply
@@ -15,15 +27,14 @@ const userLoginAndRegister = async (fastify, opts) => {
         .send({ info: 'Email already exist', name: 'email' });
     } else {
       const user = await User.create({
-        username,
-        role,
         email,
+        role,
         password: await hash(password, 10),
       });
       const cart = await Cart.create({ userId: user.id });
-      await cart.save(); //
-      await user.save();
-      return reply.send({ info: 'Success' });
+      const token = jwtToken(user.id, user.email, user.role);
+
+      return reply.send({ token });
     }
   });
 
@@ -35,17 +46,8 @@ const userLoginAndRegister = async (fastify, opts) => {
     if (!user) {
       return reply.status(404).send({ info: 'User not found', name: 'email' });
     } else if (user && (await compare(password, user.password))) {
-      return reply.send({
-        token: await sign(
-          { email, id: user.id, username: user.username },
-          SECRET_KEY,
-          {
-            expiresIn: '24h',
-          }
-        ),
-        email: user.email,
-        username: user.username,
-      });
+      const token = jwtToken(user.id, user.email, user.role);
+      return reply.send({ token });
     } else {
       return reply
         .status(403)
@@ -53,11 +55,16 @@ const userLoginAndRegister = async (fastify, opts) => {
     }
   });
 
-  fastify.get('/get', (request, reply) => {
-    return reply.send({ hello: 'Hello' });
+  fastify.get('/auth', async (request, reply) => {
+    authMiddleWare(request, reply);
+    const token = jwtToken(
+      request.user.id,
+      request.user.email,
+      request.user.role
+    ); // не обязательно думаю
+    // console.log(request.body, request.method, request.headers.authorization);
+    return reply.send({ message: 'This is token' });
   });
 };
 
 export default userLoginAndRegister;
-
-// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRpbWFAZGltYS5kaW1hIiwiaWQiOjEsImlhdCI6MTY1Mzk4OTQ1MiwiZXhwIjoxNjU0MDc1ODUyfQ.ojRNTQIbpDkZADtzvTDG50ASgf8bceJCMfPuon0tEm0

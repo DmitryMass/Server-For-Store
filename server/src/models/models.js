@@ -147,7 +147,7 @@ Rating.belongsTo(Product);
 Product.hasMany(CartProduct);
 CartProduct.belongsTo(Product);
 //
-Product.hasMany(ProductInfo);
+Product.hasMany(ProductInfo, { as: 'info' });
 ProductInfo.belongsTo(Product);
 // много ко многим .. для этого создается отдельная промежуточная табличка(бренд-тип)
 Type.belongsToMany(Brand, {

@@ -1,10 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Product } from '../models/models';
+import { Product, ProductInfo } from '../models/models';
+import { checkRole } from './authCheck';
 //
 const fs = require('fs');
 //
 export const product = async (fastify, opts) => {
   fastify.post('/', async (request, reply) => {
+    checkRole(request, reply, 'ADMIN');
+
     const file = request.body.file;
 
     try {
@@ -23,6 +26,20 @@ export const product = async (fastify, opts) => {
           typeId,
           img: newFileName,
         });
+
+        if (info) {
+          // надо парсить в обьект, тк с формдаты приходит строка
+          // await не ставим чтобы не блокировать поток
+          info = JSON.parse(info);
+          info.forEach((item) => {
+            ProductInfo.create({
+              title: item.title,
+              description: item.description,
+              productId: product.id,
+              // продукт айди создается шагом выше в product
+            });
+          });
+        }
         return reply.send(product);
       }
     } catch (error) {
@@ -30,6 +47,48 @@ export const product = async (fastify, opts) => {
     }
   });
 
-  fastify.get('/', async (request, reply) => {});
-  fastify.get('/:id', async (request, reply) => {});
+  fastify.get('/', async (request, reply) => {
+    let { brandId, typeId, limit, page } = request.query;
+    // Limit and Page отображение кол-ва товара на странице
+    // и кол-во страниц + товаров
+    page = page || 1; // кол-во страниц или 1
+    limit = limit || 9; // кол-во товара или 9 (отображаем)
+    let offset = page * limit - limit; //отступ , если перешли на следующую страницу, 9 товаров нужно пропустить
+    let products;
+
+    if (!brandId && !typeId) {
+      products = await Product.findAndCountAll({ limit, offset });
+    }
+    if (brandId && !typeId) {
+      products = await Product.findAndCountAll({
+        where: { brandId },
+        limit,
+        offset,
+      });
+    }
+    if (!brandId && typeId) {
+      products = await Product.findAndCountAll({
+        where: { typeId },
+        limit,
+        offset,
+      });
+    }
+    if (brandId && typeId) {
+      products = await Product.findAndCountAll({
+        where: { brandId, typeId },
+        limit,
+        offset,
+      });
+    }
+    return reply.send(products);
+  });
+  fastify.get('/:id', async (request, reply) => {
+    const { id } = request.params;
+    const product = await Product.findOne({
+      where: { id },
+      // инсклюд это массив характеристик(должен включатся)
+      include: [{ model: ProductInfo, as: 'info' }],
+    });
+    return reply.send(product);
+  });
 };

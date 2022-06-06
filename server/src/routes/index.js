@@ -1,3 +1,4 @@
+import authCheck from './authCheck';
 import { brand } from './brandRouter';
 import { product } from './productRouter';
 import { type } from './typeRouter';
