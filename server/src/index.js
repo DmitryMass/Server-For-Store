@@ -14,7 +14,7 @@ fastify.register(import('@fastify/multipart'), {
 });
 fastify.register(import('@fastify/cookie'));
 fastify.register(import('@fastify/static'), {
-  root: join(__dirname, 'picture'),
+  root: join(__dirname, 'static'),
 });
 
 fastify.register(allRoutes, { prefix: '/api' });
